@@ -250,7 +250,7 @@ public class AgentConnection: ObservableObject {
         let params: [String: Any] = [
             "protocolVersion": version.jsonValue,
             "clientCapabilities": [String: Any](),
-            "clientInfo": ["name": "EasyAgent", "version": "1.1.0"]
+            "clientInfo": ["name": "EasyAgent", "version": "1.1.1"]
         ]
         
         sendRequest(method: "initialize", params: params) { [weak self] result in

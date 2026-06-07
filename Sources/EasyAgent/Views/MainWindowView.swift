@@ -13,6 +13,7 @@ public struct MainWindowView: View {
     
     @AppStorage("easyAgentIsExpanded") private var isExpanded: Bool = false
     var onResize: ((Bool) -> Void)?
+    @Environment(\.colorScheme) var colorScheme
     
     public init(connection: AgentConnection, onSettingsClicked: @escaping () -> Void, onHideClicked: @escaping () -> Void, onResize: ((Bool) -> Void)? = nil) {
         self.connection = connection
@@ -214,15 +215,15 @@ public struct MainWindowView: View {
                     copyButton(for: message, isHovered: hoveredMessageId == message.id)
                     Text(message.text)
                         .font(.system(size: 13))
-                        .foregroundColor(.white.opacity(0.92))
+                        .foregroundColor(colorScheme == .dark ? .white.opacity(0.92) : .white)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
                         .background(
                             RoundedRectangle(cornerRadius: 16)
-                                .fill(Color(hue: 0.63, saturation: 0.30, brightness: 0.30).opacity(0.90))
+                                .fill(colorScheme == .dark ? Color.blue.opacity(0.75) : Color.blue.opacity(0.85))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 16)
-                                        .strokeBorder(Color.white.opacity(0.14), lineWidth: 0.5)
+                                        .strokeBorder(colorScheme == .dark ? Color.white.opacity(0.14) : Color.black.opacity(0.08), lineWidth: 0.5)
                                 )
                         )
                 }
@@ -285,10 +286,10 @@ public struct MainWindowView: View {
                     .padding(.vertical, 10)
                     .background(
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(red: 0.34, green: 0.34, blue: 0.38).opacity(0.88))
+                            .fill(colorScheme == .dark ? Color(white: 0.15).opacity(0.9) : Color.white.opacity(0.7))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 16)
-                                    .strokeBorder(Color.white.opacity(0.16), lineWidth: 0.5)
+                                    .strokeBorder(colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.1), lineWidth: 0.5)
                             )
                     )
                     
@@ -328,10 +329,10 @@ public struct MainWindowView: View {
                                             .foregroundColor(.primary)
                                             .background(
                                                 RoundedRectangle(cornerRadius: 6)
-                                                    .fill(Color.white.opacity(0.12))
+                                                    .fill(colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.06))
                                                     .overlay(
                                                         RoundedRectangle(cornerRadius: 6)
-                                                            .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
+                                                            .strokeBorder(colorScheme == .dark ? Color.white.opacity(0.18) : Color.black.opacity(0.1), lineWidth: 0.5)
                                                     )
                                             )
                                     }
@@ -344,10 +345,10 @@ public struct MainWindowView: View {
                     .padding(14)
                     .background(
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(red: 0.34, green: 0.34, blue: 0.38).opacity(0.88))
+                            .fill(colorScheme == .dark ? Color(white: 0.15).opacity(0.9) : Color.white.opacity(0.7))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 16)
-                                    .strokeBorder(Color.white.opacity(0.16), lineWidth: 0.5)
+                                    .strokeBorder(colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.1), lineWidth: 0.5)
                             )
                     )
                     .transition(.opacity.combined(with: .scale(scale: 0.97)))
@@ -476,6 +477,7 @@ struct CopyButtonView: View {
     let message: Message
     var isHovered: Bool
     @State private var isCopied: Bool = false
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         Button(action: {
@@ -501,7 +503,7 @@ struct CopyButtonView: View {
                 } else {
                     Image(systemName: "doc.on.clipboard")
                         .font(.system(size: 11))
-                        .foregroundColor(message.sender == .user ? .white.opacity(0.9) : .secondary)
+                        .foregroundColor(message.sender == .user ? .white.opacity(0.9) : (colorScheme == .dark ? .secondary : .primary.opacity(0.7)))
                         .transition(.scale.combined(with: .opacity))
                 }
             }
