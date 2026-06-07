@@ -1,0 +1,32 @@
+# Xcode / Swift Package Manager
+.DS_Store
+/.build/
+/Packages/
+/*.xcodeproj
+/Package.resolved
+
+# Python (for mock_agent or tools)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.venv/
+.env
+
+# Logs and databases
+*.log
+.agent.log
+sqlite.db
+
+# User specific Xcode files
+xcuserdata/
+
+# Package builds
+*.app
+*.zip
+*.dmg
