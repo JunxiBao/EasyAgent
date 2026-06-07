@@ -35,7 +35,8 @@ EasyAgent/
         │   ├── AgentConfig.swift       # Agent details, env variables, arguments, and hotkey models
         │   ├── Message.swift           # Chat messages (supporting text, system events, and approval requests)
         │   ├── ChatSession.swift       # Session configuration
-        │   └── HistoryManager.swift    # Persistent local storage for conversation histories
+        │   ├── HistoryManager.swift    # Persistent local storage for conversation histories
+        │   └── PermissionManager.swift # State manager for runtime tool/command execution permissions
         └── Views/
             ├── MainWindowView.swift    # Main chat panel view (message stream, input, sidebar toggle)
             ├── HistorySidebarView.swift# Sidebar UI for switching and deleting past sessions
@@ -168,6 +169,14 @@ The client renders an interactive prompt card. Once the user clicks an option, t
 
 ---
 
+## 🤖 Verified Agents
+
+The following agents have been tested and verified to work seamlessly with EasyAgent:
+
+- **Hermes Agent**: Fully supports standard JSON-RPC communication and interactive permission requests.
+
+---
+
 ## 🚀 Getting Started
 
 ### 1. Build and Package
@@ -197,7 +206,7 @@ For easy integration and testing, a python script `mock_agent.py` is included:
 
 ---
 
-## 🛠️ Secondary Development Guide (二次开发指南)
+## 🛠️ Secondary Development Guide
 
 If you wish to modify or extend EasyAgent, here is a step-by-step guide to get started:
 
@@ -219,25 +228,25 @@ If you run it from Xcode, select the `EasyAgent` executable scheme and hit **Cmd
 
 #### Adding Custom JSON-RPC Methods or Extending ACP Protocol
 EasyAgent handles process management and JSON-RPC dispatching inside:
-- [AgentConnection.swift](file:///Users/junxibao/Desktop/EasyAgent/Sources/EasyAgent/AgentConnection.swift)
+- [AgentConnection.swift](Sources/EasyAgent/AgentConnection.swift)
   - Customize standard I/O pipes, process environment overrides (`PYTHONUNBUFFERED`, `NSUnbufferedIO`), and protocol handshakes.
   - Look at `handleIncomingLine(_:)` and `sendRequest(...)` to add or handle new JSON-RPC methods/updates.
 
 #### Modifying the UI / Theme
 UI components are built using SwiftUI:
-- [MainWindowView.swift](file:///Users/junxibao/Desktop/EasyAgent/Sources/EasyAgent/Views/MainWindowView.swift): Renders the main chat feed, input bar, custom status indicators, and permission approval cards.
-- [SettingsWindowView.swift](file:///Users/junxibao/Desktop/EasyAgent/Sources/EasyAgent/Views/SettingsWindowView.swift): Controls the preferences tabs (Agent configs, Hotkeys, Appearance, Permissions).
+- [MainWindowView.swift](Sources/EasyAgent/Views/MainWindowView.swift): Renders the main chat feed, input bar, custom status indicators, and permission approval cards.
+- [SettingsWindowView.swift](Sources/EasyAgent/Views/SettingsWindowView.swift): Controls the preferences tabs (Agent configs, Hotkeys, Appearance, Permissions).
 
 #### Customizing Global Hotkeys
 System summoning via shortcut is implemented in:
-- [HotkeyManager.swift](file:///Users/junxibao/Desktop/EasyAgent/Sources/EasyAgent/HotkeyManager.swift): Handles registering global hotkeys via Carbon APIs, translating modifiers (`Command`, `Option`, `Control`, `Shift`) and key codes.
+- [HotkeyManager.swift](Sources/EasyAgent/HotkeyManager.swift): Handles registering global hotkeys via Carbon APIs, translating modifiers (`Command`, `Option`, `Control`, `Shift`) and key codes.
 
 #### Changing Local Storage / Conversation History
 State saving and history persistence are managed in:
-- [HistoryManager.swift](file:///Users/junxibao/Desktop/EasyAgent/Sources/EasyAgent/Models/HistoryManager.swift): Serializes chat threads to local JSON files under the `Application Support/EasyAgent/` folder.
+- [HistoryManager.swift](Sources/EasyAgent/Models/HistoryManager.swift): Serializes chat threads to local JSON files under the `~/Library/Application Support/EasyAgent/History/` folder.
 
 ### 4. Testing Protocols with the Mock Agent
-You can edit [mock_agent.py](file:///Users/junxibao/Desktop/EasyAgent/mock_agent.py) to simulate different backend behaviors:
+You can edit [mock_agent.py](mock_agent.py) to simulate different backend behaviors:
 - Add fake tool execution logs or custom interactive approval cards to test UI layouts.
 - Emulate API latency, networking errors, or multi-line responses.
 
