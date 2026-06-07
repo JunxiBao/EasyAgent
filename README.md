@@ -197,6 +197,59 @@ For easy integration and testing, a python script `mock_agent.py` is included:
 
 ---
 
+## 🛠️ Secondary Development Guide (二次开发指南)
+
+If you wish to modify or extend EasyAgent, here is a step-by-step guide to get started:
+
+### 1. Development Environment Setup
+- **IDE**: We recommend using **Xcode 16+** or **Cursor / VS Code** with the Swift extension.
+- **Project Type**: This is a standard **Swift Package Manager (SPM)** project.
+  - To open in Xcode: Run `xed .` in the terminal or double-click `Package.swift`. Xcode will automatically resolve dependencies (`swift-markdown-ui` and `Highlightr`).
+  - To open in VS Code: Just open the folder. The Swift extension will parse the `Package.swift` package definition.
+
+### 2. Running in Development Mode
+During development, you can run the executable directly from your terminal or IDE:
+```bash
+# Compile and run EasyAgent in debug mode
+swift run
+```
+If you run it from Xcode, select the `EasyAgent` executable scheme and hit **Cmd + R** to compile and run with the interactive debugger attached.
+
+### 3. Key Areas of Interest
+
+#### Adding Custom JSON-RPC Methods or Extending ACP Protocol
+EasyAgent handles process management and JSON-RPC dispatching inside:
+- [AgentConnection.swift](file:///Users/junxibao/Desktop/EasyAgent/Sources/EasyAgent/AgentConnection.swift)
+  - Customize standard I/O pipes, process environment overrides (`PYTHONUNBUFFERED`, `NSUnbufferedIO`), and protocol handshakes.
+  - Look at `handleIncomingLine(_:)` and `sendRequest(...)` to add or handle new JSON-RPC methods/updates.
+
+#### Modifying the UI / Theme
+UI components are built using SwiftUI:
+- [MainWindowView.swift](file:///Users/junxibao/Desktop/EasyAgent/Sources/EasyAgent/Views/MainWindowView.swift): Renders the main chat feed, input bar, custom status indicators, and permission approval cards.
+- [SettingsWindowView.swift](file:///Users/junxibao/Desktop/EasyAgent/Sources/EasyAgent/Views/SettingsWindowView.swift): Controls the preferences tabs (Agent configs, Hotkeys, Appearance, Permissions).
+
+#### Customizing Global Hotkeys
+System summoning via shortcut is implemented in:
+- [HotkeyManager.swift](file:///Users/junxibao/Desktop/EasyAgent/Sources/EasyAgent/HotkeyManager.swift): Handles registering global hotkeys via Carbon APIs, translating modifiers (`Command`, `Option`, `Control`, `Shift`) and key codes.
+
+#### Changing Local Storage / Conversation History
+State saving and history persistence are managed in:
+- [HistoryManager.swift](file:///Users/junxibao/Desktop/EasyAgent/Sources/EasyAgent/Models/HistoryManager.swift): Serializes chat threads to local JSON files under the `Application Support/EasyAgent/` folder.
+
+### 4. Testing Protocols with the Mock Agent
+You can edit [mock_agent.py](file:///Users/junxibao/Desktop/EasyAgent/mock_agent.py) to simulate different backend behaviors:
+- Add fake tool execution logs or custom interactive approval cards to test UI layouts.
+- Emulate API latency, networking errors, or multi-line responses.
+
+### 5. Custom Packaging & Signing
+Once you've made your changes, package your application:
+```bash
+./build.sh
+```
+The script will build, convert icons, perform **ad-hoc code signing** (necessary for macOS LaunchServices to recognize resources/icons correctly), and touch the final `.app` bundle to refresh Finder caches.
+
+---
+
 ## 📋 System Requirements
 
 - **Platform**: macOS 15.0 (Sequoia) or higher.
