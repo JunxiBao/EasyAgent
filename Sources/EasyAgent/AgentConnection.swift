@@ -250,7 +250,7 @@ public class AgentConnection: ObservableObject {
         let params: [String: Any] = [
             "protocolVersion": version.jsonValue,
             "clientCapabilities": [String: Any](),
-            "clientInfo": ["name": "EasyAgent", "version": "1.0.0"]
+            "clientInfo": ["name": "EasyAgent", "version": "1.1.0"]
         ]
         
         sendRequest(method: "initialize", params: params) { [weak self] result in
@@ -271,9 +271,42 @@ public class AgentConnection: ObservableObject {
     }
     
     private func sendSessionNew() {
+        let info = ProcessInfo.processInfo
+        let osVersion = info.operatingSystemVersionString
+        let userName = info.userName
+        let homeDir = FileManager.default.homeDirectoryForCurrentUser.path
+        let desktopDir = homeDir + "/Desktop"
+        
+        let formatter = DateFormatter()
+        formatter.dateStyle = .full
+        formatter.timeStyle = .medium
+        let dateString = formatter.string(from: Date())
+        
+        let systemPrompt = """
+        You are a local AI agent running on the user's Mac via Easy Agent (an ACP-compatible agent runner).
+
+        ## Current Environment
+        - **OS**: macOS \(osVersion)
+        - **Username**: \(userName)
+        - **Home Directory**: \(homeDir)
+        - **Working Directory**: \(desktopDir)
+        - **Date / Time**: \(dateString)
+
+        ## Capabilities
+        You have direct access to the user's file system and can run shell commands, read/write files, and call local tools.
+        For any sensitive or destructive operation (writing files outside the working directory, running scripts, deleting files, etc.),
+        you MUST request user approval via the ACP `session/request_permission` mechanism before proceeding.
+
+        ## Style
+        - Be concise and direct. The user is a developer.
+        - Prefer using the working directory (\(desktopDir)) as the default output location unless instructed otherwise.
+        - When you encounter a permission error, suggest the user grant Full Disk Access in System Settings → Privacy & Security.
+        """
+        
         let params: [String: Any] = [
-            "cwd": FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop").path,
-            "mcpServers": [[String: Any]]()
+            "cwd": desktopDir,
+            "mcpServers": [[String: Any]](),
+            "system": systemPrompt
         ]
         
         sendRequest(method: "session/new", params: params) { [weak self] result in

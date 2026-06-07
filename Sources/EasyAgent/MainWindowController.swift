@@ -68,10 +68,18 @@ public class MainWindowController: NSWindowController {
         let hostingView = NSHostingView(rootView: rootView)
         hostingView.frame = window.contentView?.bounds ?? .zero
         hostingView.autoresizingMask = [.width, .height]
-        // Ensure the hosting view itself is transparent so the rounded glass
-        // effect is not clipped by a rectangular background layer.
+        // Make the hosting view and its layer fully transparent so the rounded
+        // glass shape is the only visible surface. Setting cornerRadius tells
+        // the window compositor the actual shape — this eliminates the "tail"
+        // pixels that appear at corners when the compositor treats the layer
+        // as a full rectangle.
         hostingView.wantsLayer = true
-        hostingView.layer?.backgroundColor = CGColor.clear
+        if let layer = hostingView.layer {
+            layer.backgroundColor = CGColor.clear
+            layer.isOpaque = false
+            layer.cornerRadius = 24          // matches RoundedRectangle(cornerRadius: 24)
+            layer.masksToBounds = true       // clip the dark SwiftUI background to the rounded bounds
+        }
         window.contentView = hostingView
         
         super.init(window: window)

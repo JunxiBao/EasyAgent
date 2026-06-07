@@ -103,6 +103,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         )
         mainWindowController = MainWindowController(rootView: AnyView(mainView))
+        
+        // Check Full Disk Access and prompt the user if not yet granted.
+        // The alert is shown only once per launch (not nagged every time).
+        promptForFullDiskAccessIfNeeded()
     }
     
     func showMainWindow() {
@@ -200,6 +204,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private func promptForFullDiskAccessIfNeeded() {
+        let hasAccess = FileManager.default.isReadableFile(
+            atPath: "/Library/Preferences/com.apple.TimeMachine.plist"
+        )
+        guard !hasAccess else { return }
+        
+        // Delay slightly so the app finishes launching before showing the alert
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            let alert = NSAlert()
+            alert.messageText = "Full Disk Access Required"
+            alert.informativeText = """
+            Easy Agent needs Full Disk Access so the AI agent can read and write files anywhere on your Mac.
+
+            Please open System Settings → Privacy & Security → Full Disk Access and enable Easy Agent.
+            """
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "Open System Settings")
+            alert.addButton(withTitle: "Later")
+            
+            let response = alert.runModal()
+            if response == .alertFirstButtonReturn {
+                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
+                    NSWorkspace.shared.open(url)
+                }
+            }
+        }
+    }
     
     func applicationWillTerminate(_ notification: Notification) {
         connection.disconnect()

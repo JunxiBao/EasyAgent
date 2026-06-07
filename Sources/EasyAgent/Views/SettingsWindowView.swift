@@ -153,47 +153,19 @@ public struct SettingsWindowView: View {
                 Form {
                     Section(header: Text("System Access Permissions")) {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("To write files and execute local developer tools, Easy Agent requires appropriate permissions.")
+                            Text("Easy Agent requires Full Disk Access to let the AI agent read and write files anywhere on your Mac, including the Desktop.")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
                         .padding(.bottom, 6)
                         
-                        // Desktop Access
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Desktop Folder Access")
-                                    .font(.body)
-                                    .fontWeight(.medium)
-                                Text("Allows writing files to your Desktop.")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            Spacer()
-                            if permissionManager.hasDesktopAccess {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(.green)
-                                    Text("Granted")
-                                        .font(.subheadline)
-                                        .foregroundColor(.green)
-                                }
-                            } else {
-                                Button("Request Access") {
-                                    permissionManager.requestDesktopAccess()
-                                }
-                                .buttonStyle(.bordered)
-                            }
-                        }
-                        .padding(.vertical, 4)
-                        
-                        // Full Disk Access
+                        // Full Disk Access (covers Desktop too)
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Full Disk Access")
                                     .font(.body)
                                     .fontWeight(.medium)
-                                Text("Allows execution of CLI tools and scripts.")
+                                Text("Allows the agent to read/write files anywhere, including Desktop and home directory.")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -207,7 +179,7 @@ public struct SettingsWindowView: View {
                                         .foregroundColor(.green)
                                 }
                             } else {
-                                Button("Grant in Settings...") {
+                                Button("Open System Settings") {
                                     permissionManager.openSystemSettingsForFullDiskAccess()
                                 }
                                 .buttonStyle(.bordered)
