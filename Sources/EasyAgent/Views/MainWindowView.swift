@@ -21,50 +21,58 @@ public struct MainWindowView: View {
         self.onHideClicked = onHideClicked
         self.onResize = onResize
     }
+    @Namespace private var glassNS
     
     public var body: some View {
-        ZStack(alignment: .leading) {
-            Color.clear
-            
-            VStack(spacing: 0) {
-                if isExpanded {
-                    // Header
-                    headerView
+        VStack(spacing: 0) {
+            if isExpanded {
+                // Chat Panel — morphs out of the input bar via custom droplet animation
+                ZStack(alignment: .leading) {
+                    VStack(spacing: 0) {
+                        headerView
+                        chatArea
+                    }
+                    .padding(20)
                     
-                    // Chat Messages Area
-                    chatArea
-                    
-                    // Subtle separator between chat and input
-                    Rectangle()
-                        .fill(Color.primary.opacity(0.08))
-                        .frame(height: 1)
-                        .padding(.horizontal, -20)
-                        .padding(.bottom, 14)
+                    // History sidebar — only overlays the chat panel
+                    if isHistoryVisible {
+                        HistorySidebarView(connection: connection, isPresented: $isHistoryVisible)
+                            .transition(.move(edge: .leading).combined(with: .opacity))
+                            .zIndex(10)
+                    }
                 }
-                
-                // Input Panel
-                inputPanel
+                .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 24))
+                .padding(.bottom, 10)
+                .transition(
+                    .asymmetric(
+                        insertion: .modifier(
+                            active: DropletEffect(progress: 0),
+                            identity: DropletEffect(progress: 1)
+                        ),
+                        removal: .modifier(
+                            active: DropletEffect(progress: 0),
+                            identity: DropletEffect(progress: 1)
+                        )
+                    )
+                )
             }
-            .padding(isExpanded ? 20 : 16)
             
-            if isHistoryVisible {
-                HistorySidebarView(connection: connection, isPresented: $isHistoryVisible)
-                    .transition(.move(edge: .leading).combined(with: .opacity))
-                    .zIndex(10)
-            }
+            // Input Bar — always visible
+            inputPanel
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 20))
         }
-        .frame(width: 700, height: isExpanded ? 450 : 70)
-        .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 24))
+        // Use SwiftUI shadow instead of NSWindow shadow
+        .shadow(color: Color.black.opacity(0.25), radius: 20, x: 0, y: 8)
+        .frame(width: 700, height: isExpanded ? 450 : 56)
         .onExitCommand { onHideClicked() }
         .onAppear {
             isInputFocused = true
-            // Sync window size to persisted expand state
             onResize?(isExpanded)
         }
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("easyAgentDidShowWindow"))) { _ in
-            // Just restore focus, don't change expand state
             isInputFocused = true
-            // Sync window size to current state
             onResize?(isExpanded)
         }
     }
@@ -109,6 +117,7 @@ public struct MainWindowView: View {
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                         .frame(width: 28, height: 28)
+                        .contentShape(Circle())
                         .glassEffect(.regular, in: Circle())
                 }
                 .buttonStyle(.plain)
@@ -125,6 +134,7 @@ public struct MainWindowView: View {
                     .font(.system(size: 13))
                     .foregroundColor(.secondary)
                     .frame(width: 28, height: 28)
+                    .contentShape(Circle())
                     .glassEffect(.regular, in: Circle())
             }
             .buttonStyle(.plain)
@@ -136,6 +146,7 @@ public struct MainWindowView: View {
                     .font(.system(size: 13))
                     .foregroundColor(.secondary)
                     .frame(width: 28, height: 28)
+                    .contentShape(Circle())
                     .glassEffect(.regular, in: Circle())
             }
             .buttonStyle(.plain)
@@ -148,6 +159,7 @@ public struct MainWindowView: View {
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.secondary)
                     .frame(width: 28, height: 28)
+                    .contentShape(Circle())
                     .glassEffect(.regular, in: Circle())
             }
             .buttonStyle(.plain)
@@ -159,7 +171,7 @@ public struct MainWindowView: View {
     private var chatArea: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(spacing: 14) {
+                LazyVStack(spacing: 14) {
                     if connection.messages.isEmpty {
                         emptyStateView
                     } else {
@@ -171,10 +183,12 @@ public struct MainWindowView: View {
                     }
                 }
                 .padding(.vertical, 8)
-                .animation(.spring(response: 0.35, dampingFraction: 0.8, blendDuration: 0), value: connection.messages)
+                // Removed: .animation() on the full message container was causing every
+                // message bubble (including Markdown + syntax highlighting) to re-evaluate
+                // on each array change, making scrolling janky.
             }
-            .onChange(of: connection.messages) { oldValue, newValue in
-                if let lastMessage = newValue.last {
+            .onChange(of: connection.messages.count) { _, _ in
+                if let lastMessage = connection.messages.last {
                     withAnimation {
                         proxy.scrollTo(lastMessage.id, anchor: .bottom)
                     }
@@ -392,7 +406,12 @@ public struct MainWindowView: View {
             
             // Expand Toggle Button (always visible)
             Button(action: {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                // Use different springs: expanding = slower + bouncier (liquid feel),
+                // collapsing = quicker + tighter
+                let spring: Animation = isExpanded
+                    ? .spring(response: 0.32, dampingFraction: 0.82)
+                    : .spring(response: 0.5, dampingFraction: 0.72)
+                withAnimation(spring) {
                     isExpanded.toggle()
                     onResize?(isExpanded)
                 }
@@ -401,6 +420,7 @@ public struct MainWindowView: View {
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(.secondary)
                     .frame(width: 32, height: 32)
+                    .contentShape(Rectangle())
                     .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 10))
             }
             .buttonStyle(.plain)
@@ -413,6 +433,7 @@ public struct MainWindowView: View {
                         .font(.system(size: 12, weight: .bold))
                         .foregroundColor(.red)
                         .frame(width: 32, height: 32)
+                        .contentShape(Rectangle())
                         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 10))
                 }
                 .buttonStyle(.plain)
@@ -423,6 +444,7 @@ public struct MainWindowView: View {
                         .font(.system(size: 12, weight: .bold))
                         .foregroundColor(.primary)
                         .frame(width: 32, height: 32)
+                        .contentShape(Rectangle())
                         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 10))
                 }
                 .buttonStyle(.plain)
@@ -445,7 +467,7 @@ public struct MainWindowView: View {
         }
         
         if !isExpanded {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) {
                 isExpanded = true
                 onResize?(true)
             }
@@ -611,3 +633,26 @@ extension NSBezierPath {
         return path
     }
 }
+
+// MARK: - Water Droplet Transition Effect
+
+/// Creates a liquid/water-droplet animation by combining:
+/// - Y-axis scale (grows upward from bottom anchor)
+/// - Slight X-axis squeeze (surface tension feel)
+/// - Opacity fade
+/// `progress` goes from 0 (hidden) to 1 (fully visible).
+struct DropletEffect: ViewModifier {
+    let progress: Double
+    
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(
+                x: 0.88 + 0.12 * progress,   // slight horizontal squeeze at start
+                y: max(0.01, progress),        // grow from nearly zero height
+                anchor: .bottom                // emerge from bottom edge
+            )
+            .opacity(Double(progress))
+    }
+}
+
+extension DropletEffect: @preconcurrency Equatable {}

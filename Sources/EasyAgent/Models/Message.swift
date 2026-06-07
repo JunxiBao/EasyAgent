@@ -1,6 +1,6 @@
 import Foundation
 
-public struct ApprovalOption: Codable, Hashable {
+public struct ApprovalOption: Codable, Hashable, Sendable {
     public var kind: String
     public var name: String
     public var optionId: String
@@ -12,8 +12,8 @@ public struct ApprovalOption: Codable, Hashable {
     }
 }
 
-public struct Message: Identifiable, Codable, Hashable {
-    public enum Sender: String, Codable {
+public struct Message: Identifiable, Codable, Hashable, Sendable {
+    public enum Sender: String, Codable, Sendable {
         case user
         case agent
         case system

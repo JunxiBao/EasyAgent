@@ -1,6 +1,6 @@
 import Foundation
 
-public struct ChatSession: Identifiable, Codable, Hashable {
+public struct ChatSession: Identifiable, Codable, Hashable, Sendable {
     public var id: UUID
     public var title: String
     public var messages: [Message]

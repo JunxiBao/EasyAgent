@@ -48,16 +48,27 @@ public class AgentConnection: ObservableObject {
         return dir.appendingPathComponent("agent.log")
     }()
     
+    // Cache the formatter (creating one is expensive and log() is called per-chunk)
+    nonisolated(unsafe) private static let logDateFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        return f
+    }()
+    
+    // Background queue for log file I/O so it never blocks the main thread
+    private static let logQueue = DispatchQueue(label: "com.easyagent.log", qos: .utility)
+    
     private func log(_ message: String) {
-        let timestamp = ISO8601DateFormatter().string(from: Date())
+        let timestamp = Self.logDateFormatter.string(from: Date())
         let line = "[\(timestamp)] \(message)\n"
-        if let data = line.data(using: .utf8) {
-            if let fh = try? FileHandle(forWritingTo: logFileURL) {
+        let url = logFileURL
+        Self.logQueue.async {
+            guard let data = line.data(using: .utf8) else { return }
+            if let fh = try? FileHandle(forWritingTo: url) {
                 fh.seekToEndOfFile()
                 fh.write(data)
                 try? fh.close()
             } else {
-                try? data.write(to: logFileURL)
+                try? data.write(to: url)
             }
         }
     }
@@ -250,7 +261,7 @@ public class AgentConnection: ObservableObject {
         let params: [String: Any] = [
             "protocolVersion": version.jsonValue,
             "clientCapabilities": [String: Any](),
-            "clientInfo": ["name": "EasyAgent", "version": "1.1.2"]
+            "clientInfo": ["name": "EasyAgent", "version": "1.2.0"]
         ]
         
         sendRequest(method: "initialize", params: params) { [weak self] result in

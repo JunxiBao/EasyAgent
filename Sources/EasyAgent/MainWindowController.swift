@@ -36,7 +36,7 @@ public class MainWindowController: NSWindowController {
     
     public init(rootView: AnyView) {
         let window = AgentPanelWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 700, height: 70),
+            contentRect: NSRect(x: 0, y: 0, width: 700, height: 56),
             styleMask: [.borderless, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -47,7 +47,7 @@ public class MainWindowController: NSWindowController {
         window.isMovableByWindowBackground = false
         window.backgroundColor = .clear
         window.isOpaque = false
-        window.hasShadow = true
+        window.hasShadow = false // Use SwiftUI shadows to avoid the faint connecting border
         window.level = .floating
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         
@@ -55,7 +55,7 @@ public class MainWindowController: NSWindowController {
         if let screen = NSScreen.main {
             let screenRect = screen.visibleFrame
             let windowWidth: CGFloat = 700
-            let windowHeight: CGFloat = 70  // collapsed height
+            let windowHeight: CGFloat = 56  // collapsed height
             let x = screenRect.origin.x + (screenRect.width - windowWidth) / 2
             // Place the window about 100pt above the bottom of the visible area
             let y = screenRect.origin.y + 100
@@ -77,8 +77,9 @@ public class MainWindowController: NSWindowController {
         if let layer = hostingView.layer {
             layer.backgroundColor = CGColor.clear
             layer.isOpaque = false
-            layer.cornerRadius = 24          // matches RoundedRectangle(cornerRadius: 24)
-            layer.masksToBounds = true       // clip the dark SwiftUI background to the rounded bounds
+            // No cornerRadius or masksToBounds — each glass panel clips itself.
+            // Previously needed for a single-panel layout; now it would create a
+            // visible rounded frame connecting the separate panels.
         }
         window.contentView = hostingView
         
@@ -127,7 +128,7 @@ public class MainWindowController: NSWindowController {
     func updateWindowSize(isExpanded: Bool) {
         guard let window = self.window else { return }
         
-        let newHeight: CGFloat = isExpanded ? 450 : 70
+        let newHeight: CGFloat = isExpanded ? 450 : 56
         let newWidth: CGFloat = 700
         
         var frame = window.frame

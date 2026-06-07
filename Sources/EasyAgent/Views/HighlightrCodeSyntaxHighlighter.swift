@@ -1,15 +1,21 @@
 import SwiftUI
 import MarkdownUI
-import Highlightr
+@preconcurrency import Highlightr
 import AppKit
 
 public struct HighlightrCodeSyntaxHighlighter: CodeSyntaxHighlighter {
+    // Shared instance avoids recreating the Highlightr engine + loading theme
+    // on every SwiftUI view body evaluation (which happens frequently during scroll).
+    nonisolated(unsafe) private static let shared: Highlightr? = {
+        let h = Highlightr()
+        h?.setTheme(to: "atom-one-dark")
+        return h
+    }()
+    
     private let highlightr: Highlightr?
     
     public init() {
-        self.highlightr = Highlightr()
-        // atom-one-dark provides a fantastic, rich color palette that works well on both light and dark glass if we tweak the background.
-        self.highlightr?.setTheme(to: "atom-one-dark")
+        self.highlightr = Self.shared
     }
     
     public func highlightCode(_ code: String, language: String?) -> Text {

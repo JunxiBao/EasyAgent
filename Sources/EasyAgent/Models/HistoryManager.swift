@@ -7,6 +7,8 @@ public class HistoryManager: ObservableObject {
     @Published public var sessions: [ChatSession] = []
     
     private let fileManager = FileManager.default
+    private var persistWorkItem: DispatchWorkItem?
+    private static let persistQueue = DispatchQueue(label: "com.easyagent.history", qos: .utility)
     private var historyDirectory: URL {
         let urls = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)
         return urls[0].appendingPathComponent("EasyAgent/History", isDirectory: true)
@@ -57,7 +59,7 @@ public class HistoryManager: ObservableObject {
         }
         
         sessions.sort { $0.updatedAt > $1.updatedAt }
-        persist()
+        debouncedPersist()
     }
     
     public func deleteSession(id: UUID) {
@@ -65,17 +67,34 @@ public class HistoryManager: ObservableObject {
         persist()
     }
     
-    private func persist() {
-        do {
-            if !fileManager.fileExists(atPath: historyDirectory.path) {
-                try fileManager.createDirectory(at: historyDirectory, withIntermediateDirectories: true, attributes: nil)
+    /// Debounce disk writes so rapid calls (e.g. streaming chunks) don't each trigger JSON encode + file write.
+    private func debouncedPersist() {
+        persistWorkItem?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            Task { @MainActor in
+                self?.persist()
             }
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(sessions)
-            try data.write(to: historyFileURL, options: .atomic)
-        } catch {
-            print("Failed to save history: \(error)")
+        }
+        persistWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: item)
+    }
+    
+    private func persist() {
+        let dir = historyDirectory
+        let fileURL = historyFileURL
+        let sessionsSnapshot = sessions
+        Self.persistQueue.async {
+            do {
+                if !FileManager.default.fileExists(atPath: dir.path) {
+                    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true, attributes: nil)
+                }
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = .prettyPrinted
+                let data = try encoder.encode(sessionsSnapshot)
+                try data.write(to: fileURL, options: .atomic)
+            } catch {
+                print("Failed to save history: \(error)")
+            }
         }
     }
 }
