@@ -32,6 +32,13 @@ public struct MainWindowView: View {
                     
                     // Chat Messages Area
                     chatArea
+                    
+                    // Subtle separator between chat and input
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.08))
+                        .frame(height: 1)
+                        .padding(.horizontal, -20)
+                        .padding(.bottom, 14)
                 }
                 
                 // Input Panel
@@ -175,8 +182,6 @@ public struct MainWindowView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, 4)
-        .background(Color.primary.opacity(0.04))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
         .padding(.bottom, 14)
     }
     
@@ -206,14 +211,20 @@ public struct MainWindowView: View {
             if message.sender == .user {
                 Spacer(minLength: 50)
                 HStack(alignment: .bottom, spacing: 8) {
-                    copyButton(for: message)
-                        .opacity(hoveredMessageId == message.id ? 1 : 0)
+                    copyButton(for: message, isHovered: hoveredMessageId == message.id)
                     Text(message.text)
                         .font(.system(size: 13))
-                        .foregroundColor(.primary)
+                        .foregroundColor(.white.opacity(0.92))
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
-                        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16))
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color(hue: 0.63, saturation: 0.30, brightness: 0.30).opacity(0.90))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .strokeBorder(Color.white.opacity(0.14), lineWidth: 0.5)
+                                )
+                        )
                 }
                 .contentShape(Rectangle())
                 .onHover { isHovered in
@@ -272,10 +283,16 @@ public struct MainWindowView: View {
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16))
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(red: 0.34, green: 0.34, blue: 0.38).opacity(0.88))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .strokeBorder(Color.white.opacity(0.16), lineWidth: 0.5)
+                            )
+                    )
                     
-                    copyButton(for: message)
-                        .opacity(hoveredMessageId == message.id && !message.isStreaming ? 1 : 0)
+                    copyButton(for: message, isHovered: hoveredMessageId == message.id && !message.isStreaming)
                 }
                 .contentShape(Rectangle())
                 .onHover { isHovered in
@@ -287,49 +304,55 @@ public struct MainWindowView: View {
                 }
                 Spacer(minLength: 50)
             } else if message.sender == .system {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "shield.lefthalf.filled")
-                            .foregroundColor(.orange)
-                        Text("Agent Action Requires Approval")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.orange)
-                    }
-                    
-                    Text(message.text)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.primary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    
-                    if let options = message.approvalOptions {
-                        if let choice = message.approvalChoice {
-                            Text("Selected: \(options.first(where: { $0.optionId == choice })?.name ?? choice)")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.secondary)
-                                .padding(.top, 4)
-                        } else if let reqId = message.approvalRequestId {
+                // Hide the bubble entirely once user has responded
+                if message.approvalChoice == nil {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(message.text)
+                            .font(.system(size: 13))
+                            .foregroundColor(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        
+                        if let options = message.approvalOptions,
+                           let reqId = message.approvalRequestId {
                             HStack(spacing: 8) {
                                 ForEach(options, id: \.optionId) { opt in
                                     Button(action: {
-                                        connection.sendApprovalDecision(messageId: message.id, requestId: reqId, optionId: opt.optionId)
+                                        withAnimation(.easeOut(duration: 0.25)) {
+                                            connection.sendApprovalDecision(messageId: message.id, requestId: reqId, optionId: opt.optionId)
+                                        }
                                     }) {
                                         Text(opt.name)
                                             .font(.system(size: 12, weight: .medium))
-                                            .padding(.horizontal, 10)
-                                            .padding(.vertical, 4)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 5)
                                             .foregroundColor(.primary)
-                                            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 6))
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 6)
+                                                    .fill(Color.white.opacity(0.12))
+                                                    .overlay(
+                                                        RoundedRectangle(cornerRadius: 6)
+                                                            .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
+                                                    )
+                                            )
                                     }
                                     .buttonStyle(.plain)
                                 }
                             }
-                            .padding(.top, 6)
+                            .padding(.top, 4)
                         }
                     }
+                    .padding(14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(red: 0.34, green: 0.34, blue: 0.38).opacity(0.88))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .strokeBorder(Color.white.opacity(0.16), lineWidth: 0.5)
+                            )
+                    )
+                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
+                    Spacer(minLength: 50)
                 }
-                .padding(14)
-                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
-                Spacer(minLength: 50)
             } else {
                 // System notification (e.g. error message)
                 Text(message.text)
@@ -344,8 +367,8 @@ public struct MainWindowView: View {
         }
     }
     
-    private func copyButton(for message: Message) -> some View {
-        CopyButtonView(message: message)
+    private func copyButton(for message: Message, isHovered: Bool) -> some View {
+        CopyButtonView(message: message, isHovered: isHovered)
     }    
     private var inputPanel: some View {
         HStack(spacing: 10) {
@@ -361,7 +384,6 @@ public struct MainWindowView: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
                 .focused($isInputFocused)
                 .onSubmit {
                     submitPrompt()
@@ -452,6 +474,7 @@ public struct MainWindowView: View {
 
 struct CopyButtonView: View {
     let message: Message
+    var isHovered: Bool
     @State private var isCopied: Bool = false
     
     var body: some View {
@@ -486,6 +509,8 @@ struct CopyButtonView: View {
             .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 4))
         }
         .buttonStyle(.plain)
+        // Stay visible during the copied animation even if mouse moves away
+        .opacity(isHovered || isCopied ? 1 : 0)
     }
 }
 

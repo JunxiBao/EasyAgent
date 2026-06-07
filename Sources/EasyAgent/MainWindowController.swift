@@ -68,6 +68,10 @@ public class MainWindowController: NSWindowController {
         let hostingView = NSHostingView(rootView: rootView)
         hostingView.frame = window.contentView?.bounds ?? .zero
         hostingView.autoresizingMask = [.width, .height]
+        // Ensure the hosting view itself is transparent so the rounded glass
+        // effect is not clipped by a rectangular background layer.
+        hostingView.wantsLayer = true
+        hostingView.layer?.backgroundColor = CGColor.clear
         window.contentView = hostingView
         
         super.init(window: window)

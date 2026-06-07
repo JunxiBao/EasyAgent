@@ -11,6 +11,7 @@ struct EasyAgentApp: App {
     @AppStorage("ShortcutCtrl") var ctrl = false
     @AppStorage("ShortcutShift") var shift = false
     @AppStorage("ShortcutKey") var keyName = "Space"
+    @AppStorage("HideMenuBarIcon") var hideMenuBarIcon = false
     
     var shortcutKey: KeyEquivalent {
         switch keyName {
@@ -35,7 +36,10 @@ struct EasyAgentApp: App {
     }
     
     var body: some Scene {
-        MenuBarExtra("Easy Agent", systemImage: "cpu") {
+        MenuBarExtra("Easy Agent", systemImage: "cpu", isInserted: Binding(
+            get: { !hideMenuBarIcon },
+            set: { _ in }
+        )) {
             Button("Show Chat Panel") {
                 appDelegate.showMainWindow()
             }
@@ -51,6 +55,7 @@ struct EasyAgentApp: App {
                 NSApp.terminate(nil)
             }
         }
+        .menuBarExtraStyle(.menu)
     }
 }
 
@@ -127,7 +132,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 550),
+            contentRect: NSRect(x: 0, y: 0, width: 680, height: 550),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false

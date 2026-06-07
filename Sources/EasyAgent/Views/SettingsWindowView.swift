@@ -25,6 +25,7 @@ public struct SettingsWindowView: View {
     
     // Appearance
     @AppStorage("AppColorScheme") private var appColorScheme: Int = 0
+    @AppStorage("HideMenuBarIcon") private var hideMenuBarIcon: Bool = false
     
     @StateObject private var permissionManager = PermissionManager.shared
     
@@ -122,6 +123,26 @@ public struct SettingsWindowView: View {
                             .foregroundColor(.secondary)
                             .padding(.top, 4)
                     }
+                    
+                    Section(header: Text("Menu Bar")) {
+                        Toggle("Hide menu bar icon", isOn: $hideMenuBarIcon)
+                        
+                        if hideMenuBarIcon {
+                            HStack(spacing: 6) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.orange)
+                                    .font(.caption)
+                                Text("Menu bar icon is hidden. Use your hotkey or relaunch the app to access Settings.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.top, 2)
+                        } else {
+                            Text("When hidden, Easy Agent only appears via your configured hotkey.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
                 }
                 .formStyle(.grouped)
                 .tabItem {
@@ -205,6 +226,71 @@ public struct SettingsWindowView: View {
                 .tabItem {
                     Label("Permissions", systemImage: "shield.righthalf.filled")
                 }
+                
+                // Tab 5: About
+                Form {
+                    Section(header: Text("Easy Agent")) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "cpu")
+                                .font(.system(size: 32, weight: .bold))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [Color.cyan, Color.purple],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Easy Agent")
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
+                                    Text("Version \(version)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        
+                        Text("A lightweight macOS menu-bar app for running local AI agents via the Agent Communication Protocol (ACP).")
+                            .font(.callout)
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    
+                    Section(header: Text("Open Source")) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Easy Agent is open source and welcomes contributions and forks!")
+                                .font(.callout)
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            
+                            Link(destination: URL(string: "https://github.com/JunxiBao/EasyAgent")!) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "link")
+                                    Text("github.com/JunxiBao/EasyAgent")
+                                        .underline()
+                                }
+                                .font(.callout)
+                            }
+                            
+                            Text("Fork it, build on it, and make it your own. PRs are welcome!")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    
+                    Section(header: Text("License")) {
+                        Text("Released under the MIT License.")
+                            .font(.callout)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .formStyle(.grouped)
+                .tabItem {
+                    Label("About", systemImage: "info.circle")
+                }
             }
             .padding(.top, 10)
             
@@ -224,7 +310,7 @@ public struct SettingsWindowView: View {
             .padding()
             .background(Color(NSColor.windowBackgroundColor))
         }
-        .frame(width: 550, height: 500)
+        .frame(width: 680, height: 500)
         .onAppear(perform: loadSettings)
     }
     
