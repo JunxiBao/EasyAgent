@@ -250,7 +250,7 @@ public class AgentConnection: ObservableObject {
         let params: [String: Any] = [
             "protocolVersion": version.jsonValue,
             "clientCapabilities": [String: Any](),
-            "clientInfo": ["name": "EasyAgent", "version": "1.1.1"]
+            "clientInfo": ["name": "EasyAgent", "version": "1.1.2"]
         ]
         
         sendRequest(method: "initialize", params: params) { [weak self] result in
@@ -270,7 +270,7 @@ public class AgentConnection: ObservableObject {
         }
     }
     
-    private func sendSessionNew() {
+    private func getSystemPrompt() -> String {
         let info = ProcessInfo.processInfo
         let osVersion = info.operatingSystemVersionString
         let userName = info.userName
@@ -282,7 +282,8 @@ public class AgentConnection: ObservableObject {
         formatter.timeStyle = .medium
         let dateString = formatter.string(from: Date())
         
-        let systemPrompt = """
+        return """
+        <system_instructions>
         You are a local AI agent running on the user's Mac via Easy Agent (an ACP-compatible agent runner).
 
         ## Current Environment
@@ -301,7 +302,15 @@ public class AgentConnection: ObservableObject {
         - Be concise and direct. The user is a developer.
         - Prefer using the working directory (\(desktopDir)) as the default output location unless instructed otherwise.
         - When you encounter a permission error, suggest the user grant Full Disk Access in System Settings → Privacy & Security.
+        </system_instructions>
         """
+    }
+    
+    private func sendSessionNew() {
+        let homeDir = FileManager.default.homeDirectoryForCurrentUser.path
+        let desktopDir = homeDir + "/Desktop"
+        
+        let systemPrompt = getSystemPrompt()
         
         let params: [String: Any] = [
             "cwd": desktopDir,
@@ -328,6 +337,8 @@ public class AgentConnection: ObservableObject {
     public func sendPrompt(_ text: String) {
         guard let sessionId = sessionId, status == .connected else { return }
         
+        let isFirstPrompt = self.messages.filter { $0.sender == .user }.isEmpty
+        
         self.messages.append(Message(sender: .user, text: text))
         self.messages.append(Message(sender: .agent, text: "", isStreaming: true))
         
@@ -335,13 +346,15 @@ public class AgentConnection: ObservableObject {
         
         self.isResponding = true
         
+        let promptTextToSend = isFirstPrompt ? (getSystemPrompt() + "\n\nUser Request:\n" + text) : text
+        
         let params: [String: Any] = [
             "sessionId": sessionId,
             "content": [
-                ["type": "text", "text": text]
+                ["type": "text", "text": promptTextToSend]
             ],
             "prompt": [
-                ["type": "text", "text": text]
+                ["type": "text", "text": promptTextToSend]
             ]
         ]
         
@@ -520,7 +533,12 @@ public class AgentConnection: ObservableObject {
         let payload: [String: Any] = [
             "jsonrpc": "2.0",
             "id": requestId,
-            "result": ["optionId": optionId]
+            "result": [
+                "outcome": [
+                    "outcome": "selected",
+                    "optionId": optionId
+                ]
+            ]
         ]
         
         if let data = try? JSONSerialization.data(withJSONObject: payload, options: []),
