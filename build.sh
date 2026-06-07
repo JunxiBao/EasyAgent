@@ -14,8 +14,13 @@ echo "=== Copying Binary and Info.plist ==="
 cp .build/release/EasyAgent "$APP_PATH/Contents/MacOS/EasyAgent"
 cp Info.plist "$APP_PATH/Contents/Info.plist"
 
+echo "=== Copying Resource Bundles ==="
+if [ -d ".build/release/Highlightr_Highlightr.bundle" ]; then
+    cp -R ".build/release/Highlightr_Highlightr.bundle" "$APP_PATH/Contents/Resources/"
+fi
+
 echo "=== Generating App Icon (.icns) ==="
-ICON_RAW=$(find /Users/junxibao/Desktop/EasyAgent/AppIcon.iconset -type f -not -name '.*' | head -n 1)
+ICON_RAW=$(find AppIcon.iconset -type f -not -name '.*' | head -n 1)
 ICON_PNG="icon_converted.png"
 sips -s format png "$ICON_RAW" --out "$ICON_PNG" > /dev/null 2>&1
 
@@ -49,5 +54,23 @@ echo "=== Refreshing System Icon Cache ==="
 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -f "$APP_PATH"
 touch "$APP_PATH"
 
+echo "=== Packaging DMG ==="
+DMG_TEMP="/Users/junxibao/Desktop/EasyAgent_DMG_Temp"
+DMG_PATH="/Users/junxibao/Desktop/EasyAgent.dmg"
+
+echo "Preparing packaging directory..."
+rm -rf "$DMG_TEMP"
+mkdir -p "$DMG_TEMP"
+cp -R "$APP_PATH" "$DMG_TEMP/"
+ln -s /Applications "$DMG_TEMP/Applications"
+
+echo "Creating disk image..."
+rm -f "$DMG_PATH"
+hdiutil create -volname "EasyAgent" -srcfolder "$DMG_TEMP" -ov -format UDZO "$DMG_PATH"
+
+echo "Cleaning up temporary files..."
+rm -rf "$DMG_TEMP"
+
 echo "=== Build and Packaging Complete! ==="
-echo "Easy Agent is now available at: $APP_PATH"
+echo "Easy Agent App: $APP_PATH"
+echo "Easy Agent DMG: $DMG_PATH"
