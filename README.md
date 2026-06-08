@@ -2,6 +2,8 @@
 
 EasyAgent is a lightweight, high-performance macOS client designed to run and interact with local AI Agents. Running as a Menu Bar Extra (status item), it stays active in the background and can be instantly summoned using a configurable global shortcut (default: `Option + Space`) to show a floating, semi-transparent chat panel. It communicates with local agents via Standard Input/Output (stdin/stdout) using JSON-RPC.
 
+<video src="./demo.mp4" width="100%" controls autoplay loop muted></video>
+
 ---
 
 ## ✨ Key Features
