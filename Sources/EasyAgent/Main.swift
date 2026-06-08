@@ -6,7 +6,7 @@ import Carbon
 struct EasyAgentApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
-    @AppStorage("ShortcutCmd") var cmd = true
+    @AppStorage("ShortcutCmd") var cmd = false
     @AppStorage("ShortcutOpt") var opt = true
     @AppStorage("ShortcutCtrl") var ctrl = false
     @AppStorage("ShortcutShift") var shift = false
@@ -179,7 +179,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func registerGlobalHotkey() {
         let defaults = UserDefaults.standard
         
-        let cmd = defaults.object(forKey: "ShortcutCmd") == nil ? true : defaults.bool(forKey: "ShortcutCmd")
+        let cmd = defaults.bool(forKey: "ShortcutCmd")
         let opt = defaults.object(forKey: "ShortcutOpt") == nil ? true : defaults.bool(forKey: "ShortcutOpt")
         let ctrl = defaults.bool(forKey: "ShortcutCtrl")
         let shift = defaults.bool(forKey: "ShortcutShift")

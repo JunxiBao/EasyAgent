@@ -13,7 +13,7 @@ public struct SettingsWindowView: View {
     @State private var envText = ""
     
     // Shortcut configuration fields
-    @State private var cmdSelected = true
+    @State private var cmdSelected = false
     @State private var optSelected = true
     @State private var ctrlSelected = false
     @State private var shiftSelected = false
@@ -294,7 +294,7 @@ public struct SettingsWindowView: View {
         parameters = defaults.string(forKey: "AgentParameters") ?? "acp"
         envText = defaults.string(forKey: "AgentEnvText") ?? ""
         
-        cmdSelected = defaults.object(forKey: "ShortcutCmd") == nil ? true : defaults.bool(forKey: "ShortcutCmd")
+        cmdSelected = defaults.bool(forKey: "ShortcutCmd")
         optSelected = defaults.object(forKey: "ShortcutOpt") == nil ? true : defaults.bool(forKey: "ShortcutOpt")
         ctrlSelected = defaults.bool(forKey: "ShortcutCtrl")
         shiftSelected = defaults.bool(forKey: "ShortcutShift")

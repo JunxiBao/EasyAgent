@@ -64,7 +64,7 @@ Upon connecting to the agent process, the client sends an `initialize` request:
   "params": {
     "protocolVersion": "2024-11-05",
     "clientCapabilities": {},
-    "clientInfo": { "name": "EasyAgent", "version": "1.3.1" }
+    "clientInfo": { "name": "EasyAgent", "version": "1.3.2" }
   }
 }
 ```
