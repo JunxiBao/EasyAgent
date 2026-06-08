@@ -1,6 +1,17 @@
 import Foundation
 import Combine
 
+public struct AgentSlashCommand: Identifiable, Equatable {
+    public let id = UUID()
+    public let name: String
+    public let description: String
+    
+    public init(name: String, description: String) {
+        self.name = name
+        self.description = description
+    }
+}
+
 @MainActor
 public class AgentConnection: ObservableObject {
     public enum Status: Equatable {
@@ -23,6 +34,7 @@ public class AgentConnection: ObservableObject {
     @Published public var messages: [Message] = []
     @Published public var isResponding: Bool = false
     @Published public var activeSessionId: UUID = UUID()
+    @Published public var availableCommands: [AgentSlashCommand] = []
     
     private var process: Process?
     private var stdinPipe: Pipe?
@@ -167,6 +179,7 @@ public class AgentConnection: ObservableObject {
         stderrPipe = nil
         sessionId = nil
         pendingRequests.removeAll()
+        availableCommands.removeAll()
         
         self.status = .disconnected
         self.isResponding = false
@@ -258,10 +271,11 @@ public class AgentConnection: ObservableObject {
     }
     
     private func sendInitialize(modelID: String, version: ProtocolVersion = .string("2024-11-05")) {
+        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.3.1"
         let params: [String: Any] = [
             "protocolVersion": version.jsonValue,
             "clientCapabilities": [String: Any](),
-            "clientInfo": ["name": "EasyAgent", "version": "1.2.1"]
+            "clientInfo": ["name": "EasyAgent", "version": appVersion]
         ]
         
         sendRequest(method: "initialize", params: params) { [weak self] result in
@@ -336,6 +350,9 @@ public class AgentConnection: ObservableObject {
                 if let sessId = res["sessionId"] as? String {
                     self.sessionId = sessId
                     self.status = .connected
+                    
+                    // Automatically fetch MCP prompts to populate slash commands
+                    self.fetchSlashCommands()
                 } else {
                     self.status = .error("session/new did not return sessionId")
                 }
@@ -345,19 +362,46 @@ public class AgentConnection: ObservableObject {
         }
     }
     
+    private func fetchSlashCommands() {
+        sendRequest(method: "prompts/list", params: [:]) { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .success(let res):
+                if let prompts = res["prompts"] as? [[String: Any]] {
+                    var newCommands: [AgentSlashCommand] = []
+                    for p in prompts {
+                        if let name = p["name"] as? String {
+                            let desc = p["description"] as? String ?? ""
+                            let cmdName = name.hasPrefix("/") ? name : "/\(name)"
+                            newCommands.append(AgentSlashCommand(name: cmdName, description: desc))
+                        }
+                    }
+                    if !newCommands.isEmpty {
+                        self.availableCommands.append(contentsOf: newCommands)
+                    }
+                }
+            case .failure(let error):
+                print("Failed to fetch prompts/list: \(error.localizedDescription)")
+            }
+        }
+    }
+    
     public func sendPrompt(_ text: String) {
         guard let sessionId = sessionId, status == .connected else { return }
         
-        let isFirstPrompt = self.messages.filter { $0.sender == .user }.isEmpty
+        let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedText.isEmpty { return }
         
-        self.messages.append(Message(sender: .user, text: text))
+        self.messages.append(Message(sender: .user, text: trimmedText))
         self.messages.append(Message(sender: .agent, text: "", isStreaming: true))
         
         HistoryManager.shared.saveSession(id: activeSessionId, messages: messages)
         
         self.isResponding = true
         
-        let promptTextToSend = isFirstPrompt ? (getSystemPrompt() + "\n\nUser Request:\n" + text) : text
+        let isFirstPrompt = self.messages.filter { $0.sender == .user }.count == 1
+        let isCommand = trimmedText.hasPrefix("/")
+        let promptTextToSend = (isFirstPrompt && !isCommand) ? (getSystemPrompt() + "\n\nUser Request:\n" + trimmedText) : trimmedText
         
         let params: [String: Any] = [
             "sessionId": sessionId,
@@ -435,6 +479,20 @@ public class AgentConnection: ObservableObject {
                                 self.messages[lastAgentIdx].text += text
                             }
                         }
+                    } else if kind == "available_commands_update" {
+                        if let cmds = update["availableCommands"] as? [[String: Any]] {
+                            var newCommands: [AgentSlashCommand] = []
+                            for cmd in cmds {
+                                if let name = cmd["name"] as? String {
+                                    let desc = cmd["description"] as? String ?? ""
+                                    let cmdName = name.hasPrefix("/") ? name : "/\(name)"
+                                    newCommands.append(AgentSlashCommand(name: cmdName, description: desc))
+                                }
+                            }
+                            DispatchQueue.main.async {
+                                self.availableCommands = newCommands
+                            }
+                        }
                     } else if kind == "turn_complete" || kind == "usage_update" || kind == "agent_message_done" || kind == "done" || kind == "error" || kind == "stop" || kind == "end" {
                         self.isResponding = false
                         if let lastAgentIdx = self.messages.lastIndex(where: { $0.sender == .agent }) {
@@ -459,6 +517,22 @@ public class AgentConnection: ObservableObject {
                    let line = String(data: data, encoding: .utf8) {
                     sendLine(line)
                 }
+            }
+            return
+        }
+        
+        // 1.5 Is it a notification from agent to register slash commands?
+        if let method = json["method"] as? String, method == "agent/registerCommands" {
+            if let params = json["params"] as? [String: Any],
+               let cmds = params["commands"] as? [[String: Any]] {
+                var newCommands: [AgentSlashCommand] = []
+                for cmd in cmds {
+                    if let name = cmd["name"] as? String,
+                       let desc = cmd["description"] as? String {
+                        newCommands.append(AgentSlashCommand(name: name, description: desc))
+                    }
+                }
+                self.availableCommands = newCommands
             }
             return
         }

@@ -46,6 +46,22 @@ for line in sys.stdin:
         sys.stdout.write(json.dumps(resp) + "\n")
         sys.stdout.flush()
         
+        # Send slash commands registration
+        commands_notification = {
+            "jsonrpc": "2.0",
+            "method": "agent/registerCommands",
+            "params": {
+                "commands": [
+                    { "name": "/goal", "description": "Run a long-running task" },
+                    { "name": "/clear", "description": "Clear the current context" },
+                    { "name": "/help", "description": "Show available agent features" },
+                    { "name": "/settings", "description": "Open the agent settings panel" }
+                ]
+            }
+        }
+        sys.stdout.write(json.dumps(commands_notification) + "\n")
+        sys.stdout.flush()
+        
     elif method == "session/prompt":
         sess_id = data.get("params", {}).get("sessionId")
         user_prompt = data.get("params", {}).get("content", [{}])[0].get("text", "")

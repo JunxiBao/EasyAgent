@@ -5,7 +5,7 @@ echo "=== Building Easy Agent (Release) ==="
 swift build -c release
 
 echo "=== Preparing EasyAgent.app Bundle ==="
-APP_PATH="/Users/junxibao/Desktop/EasyAgent.app"
+APP_PATH="$HOME/Desktop/EasyAgent.app"
 rm -rf "$APP_PATH"
 mkdir -p "$APP_PATH/Contents/MacOS"
 mkdir -p "$APP_PATH/Contents/Resources"
@@ -55,8 +55,8 @@ echo "=== Refreshing System Icon Cache ==="
 touch "$APP_PATH"
 
 echo "=== Packaging DMG ==="
-DMG_TEMP="/Users/junxibao/Desktop/EasyAgent_DMG_Temp"
-DMG_PATH="/Users/junxibao/Desktop/EasyAgent.dmg"
+DMG_TEMP="$HOME/Desktop/EasyAgent_DMG_Temp"
+DMG_PATH="$HOME/Desktop/EasyAgent.dmg"
 
 echo "Preparing packaging directory..."
 rm -rf "$DMG_TEMP"

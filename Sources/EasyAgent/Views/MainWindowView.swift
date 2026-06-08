@@ -11,6 +11,10 @@ public struct MainWindowView: View {
     @State private var isHistoryVisible: Bool = false
     @State private var hoveredMessageId: UUID? = nil
     
+    @State private var showCommandMenu: Bool = false
+    @State private var filteredCommands: [AgentSlashCommand] = []
+    @State private var selectedCommandIndex: Int = 0
+    
     @AppStorage("easyAgentIsExpanded") private var isExpanded: Bool = false
     var onResize: ((Bool) -> Void)?
     @Environment(\.colorScheme) var colorScheme
@@ -53,7 +57,27 @@ public struct MainWindowView: View {
                     .transition(.move(edge: .leading).combined(with: .opacity))
                     .zIndex(10)
             }
+            
+            if showCommandMenu && !filteredCommands.isEmpty {
+                Button(action: {
+                    if selectedCommandIndex > 0 { selectedCommandIndex -= 1 }
+                }) { Text("") }.keyboardShortcut(.upArrow, modifiers: []).opacity(0)
+                
+                Button(action: {
+                    if selectedCommandIndex < filteredCommands.count - 1 { selectedCommandIndex += 1 }
+                }) { Text("") }.keyboardShortcut(.downArrow, modifiers: []).opacity(0)
+                
+                VStack {
+                    Spacer()
+                    commandMenu
+                        .padding(.bottom, 65)
+                        .padding(.leading, 20)
+                }
+                .zIndex(20)
+                .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .bottomLeading)).combined(with: .move(edge: .bottom)))
+            }
         }
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: showCommandMenu)
         .frame(width: 700, height: isExpanded ? 450 : 70)
         .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 24))
         .onExitCommand { onHideClicked() }
@@ -163,7 +187,7 @@ public struct MainWindowView: View {
     
     private var chatArea: some View {
         ScrollViewReader { proxy in
-            ScrollView {
+            ScrollView(showsIndicators: false) {
                 LazyVStack(spacing: 14) {
                     if connection.messages.isEmpty {
                         emptyStateView
@@ -249,7 +273,7 @@ public struct MainWindowView: View {
                             .markdownTheme(.docC)
                             .markdownCodeSyntaxHighlighter(.highlightr)
                             .markdownBlockStyle(\.codeBlock) { configuration in
-                                ScrollView(.horizontal) {
+                                ScrollView(.horizontal, showsIndicators: false) {
                                     configuration.label
                                         .padding(12)
                                         .markdownTextStyle {
@@ -394,7 +418,40 @@ public struct MainWindowView: View {
                 .padding(.vertical, 10)
                 .focused($isInputFocused)
                 .onSubmit {
-                    submitPrompt()
+                    if showCommandMenu && !filteredCommands.isEmpty {
+                        let safeIndex = min(max(selectedCommandIndex, 0), filteredCommands.count - 1)
+                        selectCommand(filteredCommands[safeIndex])
+                    } else {
+                        submitPrompt()
+                    }
+                }
+                .onChange(of: inputText) { _, newValue in
+                    if newValue.hasPrefix("/") && !newValue.contains(" ") {
+                        let text = newValue.trimmingCharacters(in: .whitespaces)
+                        let query = String(text.dropFirst()).lowercased()
+                        let matches = connection.availableCommands.filter { cmd in
+                            query.isEmpty || cmd.name.lowercased().dropFirst().contains(query) || cmd.name.lowercased().contains(query)
+                        }.sorted {
+                            let aPrefix = $0.name.lowercased().dropFirst().hasPrefix(query)
+                            let bPrefix = $1.name.lowercased().dropFirst().hasPrefix(query)
+                            if aPrefix && !bPrefix { return true }
+                            if !aPrefix && bPrefix { return false }
+                            return $0.name < $1.name
+                        }
+                        filteredCommands = matches
+                        selectedCommandIndex = 0
+                        showCommandMenu = !matches.isEmpty
+                        
+                        // Auto expand if collapsed to show the menu
+                        if showCommandMenu && !isExpanded {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                isExpanded = true
+                                onResize?(true)
+                            }
+                        }
+                    } else {
+                        showCommandMenu = false
+                    }
                 }
             
             // Expand Toggle Button (always visible)
@@ -462,6 +519,74 @@ public struct MainWindowView: View {
         }
         
         connection.sendPrompt(text)
+    }
+    
+    private var commandMenu: some View {
+        ScrollView(showsIndicators: false) {
+            ScrollViewReader { proxy in
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(filteredCommands.enumerated()), id: \.element.id) { index, cmd in
+                        VStack(spacing: 0) {
+                            Button(action: {
+                                selectCommand(cmd)
+                            }) {
+                                HStack(spacing: 12) {
+                                    Text(cmd.name)
+                                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                        .foregroundColor(index == selectedCommandIndex ? .white : .primary)
+                                    
+                                    Text(cmd.description)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(index == selectedCommandIndex ? .white.opacity(0.8) : .secondary)
+                                        .lineLimit(1)
+                                    
+                                    Spacer(minLength: 0)
+                                    
+                                    if index == selectedCommandIndex {
+                                        Image(systemName: "return")
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundColor(.white.opacity(0.7))
+                                    }
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(index == selectedCommandIndex ? Color.blue.opacity(0.8) : Color.clear)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            
+                            if index < filteredCommands.count - 1 {
+                                Rectangle()
+                                    .fill(Color.primary.opacity(0.08))
+                                    .frame(height: 1)
+                                    .padding(.horizontal, 14)
+                            }
+                        }
+                        .id(index)
+                    }
+                }
+                .onChange(of: selectedCommandIndex) { _, newIndex in
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        proxy.scrollTo(newIndex, anchor: .center)
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 6)
+        .frame(width: 380)
+        .frame(maxHeight: 280)
+        .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 12))
+        .shadow(color: Color.black.opacity(0.2), radius: 15, y: 8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(colorScheme == .dark ? Color.white.opacity(0.2) : Color.white.opacity(0.6), lineWidth: 0.5)
+        )
+    }
+    
+    private func selectCommand(_ cmd: AgentSlashCommand) {
+        inputText = cmd.name + " "
+        showCommandMenu = false
+        isInputFocused = true
     }
     
     private var statusColor: Color {
